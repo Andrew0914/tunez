@@ -1,19 +1,19 @@
 defmodule TunezWeb.Components.RatingBar do
   use TunezWeb, :component
 
-  attr :album, :map, required: true
+  attr :target_id, :string, required: true
   attr :rating, :integer, default: 0
   attr :average, :float, default: 0.0
   attr :rating_count, :integer, default: 0
 
   def rating_bar(assigns) do
     ~H"""
-    <div class="mt-3 flex items-center justify-between" data-role="album-rating">
+    <div class="mt-3 flex items-center justify-between" data-role="rating-bar">
       <div class="flex flex-row-reverse">
         <button
           :for={n <- 5..1//-1}
           type="button"
-          phx-click="rate-album"
+          phx-click="rate"
           phx-value-target-id={@target_id}
           phx-value-rating={n}
           aria-label={"Rate #{n} out of 5"}
@@ -24,7 +24,7 @@ defmodule TunezWeb.Components.RatingBar do
       </div>
       <span
         :if={@rating_count > 0}
-        data-role="album-rating-average"
+        data-role="rating-average"
         class="text-zinc-500 text-sm whitespace-nowrap"
       >
         <.icon name="hero-heart-solid" class="size-4 -mt-0.5 text-red-400" />
