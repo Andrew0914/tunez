@@ -3,7 +3,7 @@ defmodule Tunez.Music.Album do
     otp_app: :tunez,
     domain: Tunez.Music,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshGraphql.Resource, AshJsonApi.Resource],
+    extensions: [AshGraphql.Resource, AshJsonApi.Resource, AshOban],
     authorizers: [Ash.Policy.Authorizer]
 
   graphql do
@@ -24,6 +24,18 @@ defmodule Tunez.Music.Album do
     end
   end
 
+  oban do
+    triggers do
+      trigger :notification do
+        action :notify_followers
+        where expr(followers_notified != true)
+        scheduler_cron "* * * * *"
+        worker_module_name Tunez.Music.Album.AshOban.Worker.Notification
+        scheduler_module_name Tunez.Music.Album.AshOban.Scheduler.Notification
+      end
+    end
+  end
+
   actions do
     defaults [:read]
 
@@ -31,6 +43,7 @@ defmodule Tunez.Music.Album do
       accept [:name, :year_released, :cover_image_url, :artist_id]
       argument :tracks, {:array, :map}
       change manage_relationship(:tracks, type: :direct_control, order_is_key: :order)
+      change run_oban_trigger(:notification)
     end
 
     update :update do
@@ -38,6 +51,12 @@ defmodule Tunez.Music.Album do
       require_atomic? false
       argument :tracks, {:array, :map}
       change manage_relationship(:tracks, type: :direct_control, order_is_key: :order)
+    end
+
+    update :notify_followers do
+      require_atomic? false
+      change Tunez.Accounts.Changes.SendNewAlbumNotifications
+      change set_attribute(:followers_notified, true)
     end
 
     destroy :destroy do
@@ -48,6 +67,10 @@ defmodule Tunez.Music.Album do
   end
 
   policies do
+    bypass AshOban.Checks.AshObanInteraction do
+      authorize_if always()
+    end
+
     bypass actor_attribute_equals(:role, :admin) do
       authorize_if always()
     end
@@ -66,8 +89,6 @@ defmodule Tunez.Music.Album do
   end
 
   changes do
-    change Tunez.Accounts.Changes.SendNewAlbumNotifications, on: [:create]
-
     change relate_actor(:created_by, allow_nil?: true), on: [:create]
     change relate_actor(:updated_by, allow_nil?: true)
   end

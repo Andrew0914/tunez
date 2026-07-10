@@ -7,12 +7,14 @@
 # General application configuration
 import Config
 
-config :ash_oban, pro?: false
+config :ash_oban,
+  pro?: false,
+  debug_all_triggers?: true
 
 config :tunez, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10],
+  queues: [default: 10, album_notification: 10],
   repo: Tunez.Repo,
   plugins: [{Oban.Plugins.Cron, []}]
 
