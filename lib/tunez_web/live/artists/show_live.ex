@@ -1,5 +1,6 @@
 defmodule TunezWeb.Artists.ShowLive do
   use TunezWeb, :live_view
+  import TunezWeb.Components.RatingBar, only: [rating_bar: 1]
 
   require Logger
 
@@ -84,6 +85,7 @@ defmodule TunezWeb.Artists.ShowLive do
     <div id={"album-#{@album.id}"} class="md:flex gap-8 group">
       <div class="mx-auto mb-6 md:mb-0 w-2/3 md:w-72 lg:w-96">
         <.cover_image image={@album.cover_image_url} />
+        <.rating_bar target_id={@album.id} rating={1} rating_count={1} />
       </div>
       <div class="flex-1">
         <.header class="pl-3 pr-2 !m-0">
