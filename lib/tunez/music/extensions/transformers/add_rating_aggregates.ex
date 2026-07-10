@@ -7,9 +7,11 @@ defmodule Tunez.Music.Extensions.Transformers.AddRatingAggregates do
 
     {:ok, ratings} =
       Ash.Resource.Builder.build_relationship(:has_many, :ratings, Tunez.Music.Rating,
-        destination_attribute: :resource_id,
-        context: %{data_layer: %{table: table}}
+        destination_attribute: :resource_id
       )
+
+    # build_relationship doesn't apply the `as: :context` alias, so set it directly.
+    ratings = %{ratings | context: %{data_layer: %{table: table}}}
 
     {:ok, average} =
       Ash.Resource.Builder.build_aggregate(:average_rating, :avg, :ratings,

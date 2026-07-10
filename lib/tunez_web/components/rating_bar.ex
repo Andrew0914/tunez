@@ -14,7 +14,7 @@ defmodule TunezWeb.Components.RatingBar do
           :for={n <- 5..1//-1}
           type="button"
           phx-click="rate"
-          phx-value-resource-id={resource_id}
+          phx-value-resource-id={@resource_id}
           phx-value-rating={n}
           aria-label={"Rate #{n} out of 5"}
           class="peer peer-hover:text-red-400 hover:text-red-400 text-gray-300 transition-colors cursor-pointer"

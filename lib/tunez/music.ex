@@ -98,5 +98,7 @@ defmodule Tunez.Music do
 
       define :followers_for_artist, action: :for_artist, args: [:artist_id]
     end
+
+    resource Tunez.Music.Rating
   end
 end
