@@ -106,6 +106,8 @@ defmodule Tunez.Music.Album do
 
     create_timestamp :inserted_at
     update_timestamp :updated_at
+
+    attribute :followers_notified, :boolean, default: false, allow_nil?: false
   end
 
   relationships do
