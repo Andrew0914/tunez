@@ -4,6 +4,11 @@ defmodule TunezWeb.Artists.IndexLive do
   require Logger
 
   def mount(_params, _session, socket) do
+    if connected?(socket) do
+      "followers:update"
+      |> TunezWeb.Endpoint.subscribe()
+    end
+
     socket =
       socket
       |> assign(:page_title, "Artists")
@@ -68,7 +73,7 @@ defmodule TunezWeb.Artists.IndexLive do
     ~H"""
     <div id={"artist-#{@artist.id}"} data-role="artist-card" class="relative mb-2">
       <.link navigate={~p"/artists/#{@artist.id}"}>
-        <.follow_icon :if={@artist.followed_by_me} />
+        <.follow_icon :if={@artist.followed_by_me} follows={@artist.follower_count} />
         <.cover_image image={@artist.cover_image_url} />
       </.link>
     </div>
@@ -220,6 +225,29 @@ defmodule TunezWeb.Artists.IndexLive do
   def handle_event("search", %{"query" => query}, socket) do
     params = remove_empty(%{q: query, sort_by: socket.assigns.sort_by})
     {:noreply, push_patch(socket, to: ~p"/?#{params}")}
+  end
+
+  def handle_info(%{topic: "followers:update", payload: %{artist_id: artist_id}}, socket) do
+    updated_artist =
+      Tunez.Music.get_artist_by_id!(artist_id, query: [select: [:id]], load: [:follower_count])
+
+    update_followers = fn
+      %{id: ^artist_id} = artist ->
+        %{artist | follower_count: updated_artist.follower_count}
+
+      artist ->
+        artist
+    end
+
+    socket =
+      update(socket, :page, fn page ->
+        %{
+          page
+          | results: Enum.map(page.results, update_followers)
+        }
+      end)
+
+    {:noreply, socket}
   end
 
   def query_string(page, query_text, sort_by, which) do

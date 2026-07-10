@@ -4,13 +4,18 @@ defmodule TunezWeb.Artists.ShowLive do
   require Logger
 
   def mount(_params, _session, socket) do
+    if connected?(socket) do
+      "followers:update"
+      |> TunezWeb.Endpoint.subscribe()
+    end
+
     {:ok, socket}
   end
 
   def handle_params(%{"id" => artist_id}, _url, socket) do
     artist =
       Tunez.Music.get_artist_by_id!(artist_id,
-        load: [:followed_by_me, albums: [:duration, :tracks]],
+        load: [:follower_count, :followed_by_me, albums: [:duration, :tracks]],
         actor: socket.assigns.current_user
       )
 
@@ -32,6 +37,9 @@ defmodule TunezWeb.Artists.ShowLive do
             :if={Tunez.Music.can_follow_artist?(@current_user, @artist)}
             on={@artist.followed_by_me}
           />
+          <span class="text-sm">
+            {@artist.follower_count} followers
+          </span>
         </.h1>
         <:subtitle :if={@artist.previous_names != []}>
           formerly known as: {Enum.join(@artist.previous_names, ", ")}
@@ -227,5 +235,20 @@ defmodule TunezWeb.Artists.ShowLive do
       end
 
     {:noreply, socket}
+  end
+
+  def handle_info(%{topic: "followers:update", payload: %{artist_id: artist_id}}, socket) do
+    artist =
+      Tunez.Music.get_artist_by_id!(artist_id,
+        load: [:follower_count, :followed_by_me],
+        actor: socket.assigns.current_user
+      )
+
+    {:noreply,
+     socket
+     |> update(
+       :artist,
+       &%{&1 | followed_by_me: artist.followed_by_me, follower_count: artist.follower_count}
+     )}
   end
 end

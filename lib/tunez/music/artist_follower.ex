@@ -4,7 +4,8 @@ defmodule Tunez.Music.ArtistFollower do
     domain: Tunez.Music,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshGraphql.Resource]
+    extensions: [AshGraphql.Resource],
+    notifiers: [Ash.Notifier.PubSub]
 
   graphql do
     type :artist_follower
@@ -58,6 +59,18 @@ defmodule Tunez.Music.ArtistFollower do
     policy action_type(:destroy) do
       authorize_if actor_present()
     end
+  end
+
+  pub_sub do
+    prefix "followers"
+    module TunezWeb.Endpoint
+
+    transform fn follow ->
+      Map.take(follow.data, [:artist_id])
+    end
+
+    publish :create, ["update"]
+    publish :destroy, ["update"]
   end
 
   relationships do
