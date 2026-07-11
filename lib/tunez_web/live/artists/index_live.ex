@@ -1,6 +1,7 @@
 defmodule TunezWeb.Artists.IndexLive do
   use TunezWeb, :live_view
   import TunezWeb.Components.RatingBar, only: [rating_bar: 1]
+  import TunezWeb.Artists.ArtistFilterForm, only: [artist_filter_form: 1]
 
   require Logger
 
@@ -12,32 +13,28 @@ defmodule TunezWeb.Artists.IndexLive do
 
     socket =
       socket
+      |> assign(:filter_form, AshPhoenix.FilterForm.new(Tunez.Music.Artist))
       |> assign(:page_title, "Artists")
 
     {:ok, socket}
   end
 
+  @impl true
   def handle_params(params, _url, socket) do
     sort_by = Map.get(params, "sort_by") |> validate_sort_by()
     query_text = Map.get(params, "q", "")
     page_params = AshPhoenix.LiveView.params_to_page_opts(params, default_limit: 12)
 
-    page =
-      Tunez.Music.search_artists!(query_text,
-        page: page_params,
-        query: [sort_input: sort_by],
-        actor: socket.assigns.current_user
-      )
-
     socket =
       socket
       |> assign(:sort_by, sort_by)
       |> assign(:query_text, query_text)
-      |> assign(:page, page)
+      |> search_artists(page_params)
 
     {:noreply, socket}
   end
 
+  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app {assigns}>
@@ -46,6 +43,9 @@ defmodule TunezWeb.Artists.IndexLive do
         <:action><.sort_changer selected={@sort_by} /></:action>
         <:action>
           <.search_box query={@query_text} method="get" data-role="artist-search" phx-submit="search" />
+        </:action>
+        <:action>
+          <.artist_filter_form filter_form={@filter_form} />
         </:action>
         <:action :if={Tunez.Music.can_create_artist?(@current_user)}>
           <.button_link navigate={~p"/artists/new"} kind="primary">
@@ -259,12 +259,49 @@ defmodule TunezWeb.Artists.IndexLive do
           end)
           |> put_flash(:info, "Artist rated successfully")
 
-        {:error, error} ->
-          IO.inspect(error)
+        {:error, _error} ->
           put_flash(socket, :error, "Could not rate this artist")
       end
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("filter_validate", %{"filter" => params}, socket) do
+    {:noreply,
+     assign(socket,
+       filter_form: AshPhoenix.FilterForm.validate(socket.assigns.filter_form, params)
+     )}
+  end
+
+  def handle_event("filter_submit", %{"filter" => params}, socket) do
+    filter_form = AshPhoenix.FilterForm.validate(socket.assigns.filter_form, params)
+
+    case AshPhoenix.FilterForm.filter(Tunez.Music.Artist, filter_form) do
+      {:ok, query} ->
+        {:noreply, socket |> assign(:filter_form, filter_form) |> search_artists()}
+
+      {:error, filter_form} ->
+        {:noreply, assign(socket, filter_form: filter_form)}
+    end
+  end
+
+  def handle_event("remove_filter_component", %{"component-id" => component_id}, socket) do
+    {:noreply,
+     assign(socket,
+       filter_form:
+         AshPhoenix.FilterForm.remove_component(socket.assigns.filter_form, component_id)
+     )}
+  end
+
+  def handle_event("add_filter_predicate", %{"component-id" => component_id}, socket) do
+    {:noreply,
+     assign(socket,
+       filter_form:
+         AshPhoenix.FilterForm.add_predicate(socket.assigns.filter_form, :name, :contains, nil,
+           to: component_id
+         )
+     )}
   end
 
   def handle_info(%{topic: "followers:update", payload: %{artist_id: artist_id}}, socket) do
@@ -306,5 +343,18 @@ defmodule TunezWeb.Artists.IndexLive do
       n when n >= 1_000 -> "#{Float.round(n / 1_000, 1)}K"
       n -> n
     end
+  end
+
+  def search_artists(socket, page_params \\ %{}) do
+    {:ok, filter_map} = AshPhoenix.FilterForm.to_filter_map(socket.assigns.filter_form)
+
+    page =
+      Tunez.Music.search_artists!(socket.assigns.query_text,
+        page: page_params,
+        query: [sort_input: socket.assigns.sort_by, filter: filter_map],
+        actor: socket.assigns.current_user
+      )
+
+    socket |> assign(:page, page)
   end
 end
