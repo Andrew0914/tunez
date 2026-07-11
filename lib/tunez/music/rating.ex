@@ -1,5 +1,9 @@
 defmodule Tunez.Music.Rating do
-  use Ash.Resource, otp_app: :tunez, domain: Tunez.Music, data_layer: AshPostgres.DataLayer
+  use Ash.Resource,
+    otp_app: :tunez,
+    domain: Tunez.Music,
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     polymorphic? true
@@ -19,6 +23,16 @@ defmodule Tunez.Music.Rating do
       upsert_identity :unique_rating
       upsert_fields [:rating]
       change relate_actor(:user)
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if always()
+    end
+
+    policy action(:rate) do
+      authorize_if actor_present()
     end
   end
 

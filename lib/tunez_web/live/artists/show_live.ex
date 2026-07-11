@@ -16,7 +16,11 @@ defmodule TunezWeb.Artists.ShowLive do
   def handle_params(%{"id" => artist_id}, _url, socket) do
     artist =
       Tunez.Music.get_artist_by_id!(artist_id,
-        load: [:follower_count, :followed_by_me, albums: [:duration, :tracks]],
+        load: [
+          :follower_count,
+          :followed_by_me,
+          albums: [:duration, :tracks, :average_rating, :my_rating]
+        ],
         actor: socket.assigns.current_user
       )
 
@@ -85,7 +89,13 @@ defmodule TunezWeb.Artists.ShowLive do
     <div id={"album-#{@album.id}"} class="md:flex gap-8 group">
       <div class="mx-auto mb-6 md:mb-0 w-2/3 md:w-72 lg:w-96">
         <.cover_image image={@album.cover_image_url} />
-        <.rating_bar resource_id={@album.id} rating={0} rating_count={0} resource_name="album" />
+        <.rating_bar
+          :if={Tunez.Music.can_rate_album?(@current_user)}
+          resource_id={@album.id}
+          rating={@album.my_rating || 0}
+          average={@album.average_rating}
+          resource_name="album"
+        />
       </div>
       <div class="flex-1">
         <.header class="pl-3 pr-2 !m-0">
@@ -240,14 +250,26 @@ defmodule TunezWeb.Artists.ShowLive do
   end
 
   def handle_event("rate_album", %{"rating" => rating, "resource-id" => album_id}, socket) do
+    reload_album_rating = fn
+      %{id: ^album_id} = album ->
+        Ash.load!(album, [:my_rating, :average_rating], actor: socket.assigns.current_user)
+
+      album ->
+        album
+    end
+
     socket =
       case Tunez.Music.rate_album(%{rating: rating, resource_id: album_id},
              actor: socket.assigns.current_user
            ) do
-        {:ok, _} ->
-          put_flash(socket, :info, "Album rated successfully")
+        {:ok, _result} ->
+          socket
+          |> update(:artist, fn artist ->
+            %{artist | albums: Enum.map(artist.albums, reload_album_rating)}
+          end)
+          |> put_flash(:info, "Album rated successfully")
 
-        {:error, _} ->
+        {:error, error} ->
           put_flash(socket, :error, "Could not rate album")
       end
 

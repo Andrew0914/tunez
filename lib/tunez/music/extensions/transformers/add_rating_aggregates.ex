@@ -1,6 +1,7 @@
 defmodule Tunez.Music.Extensions.Transformers.AddRatingAggregates do
   use Spark.Dsl.Transformer
   alias Spark.Dsl.Transformer
+  import Ash.Expr
 
   def transform(dsl_state) do
     table = Transformer.get_option(dsl_state, [:ratings], :table)
@@ -22,11 +23,20 @@ defmodule Tunez.Music.Extensions.Transformers.AddRatingAggregates do
     {:ok, count} =
       Ash.Resource.Builder.build_aggregate(:rating_count, :count, :ratings, public?: true)
 
+    # The current actor's own rating value for this record (nil if unrated).
+    {:ok, mine} =
+      Ash.Resource.Builder.build_aggregate(:my_rating, :first, :ratings,
+        field: :rating,
+        public?: true,
+        filter: expr(user_id == ^actor(:id))
+      )
+
     {:ok,
      dsl_state
      |> Transformer.add_entity([:relationships], ratings)
      |> Transformer.add_entity([:aggregates], average)
-     |> Transformer.add_entity([:aggregates], count)}
+     |> Transformer.add_entity([:aggregates], count)
+     |> Transformer.add_entity([:aggregates], mine)}
   end
 
   def before?(_), do: true
