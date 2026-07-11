@@ -56,7 +56,9 @@ defmodule Tunez.Music do
             :followed_by_me,
             :album_count,
             :latest_album_year_released,
-            :cover_image_url
+            :cover_image_url,
+            :my_rating,
+            :average_rating
           ]
         ]
 
@@ -103,6 +105,10 @@ defmodule Tunez.Music do
       define :rate_album,
         action: :rate,
         default_options: [context: %{data_layer: %{table: "album_ratings"}}]
+
+      define :rate_artist,
+        action: :rate,
+        default_options: [context: %{data_layer: %{table: "artist_ratings"}}]
     end
   end
 end

@@ -269,7 +269,7 @@ defmodule TunezWeb.Artists.ShowLive do
           end)
           |> put_flash(:info, "Album rated successfully")
 
-        {:error, error} ->
+        {:error, _error} ->
           put_flash(socket, :error, "Could not rate album")
       end
 
