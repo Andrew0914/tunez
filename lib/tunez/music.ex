@@ -99,6 +99,10 @@ defmodule Tunez.Music do
       define :followers_for_artist, action: :for_artist, args: [:artist_id]
     end
 
-    resource Tunez.Music.Rating
+    resource Tunez.Music.Rating do
+      define :rate_album,
+        action: :rate,
+        default_options: [context: %{data_layer: %{table: "album_ratings"}}]
+    end
   end
 end

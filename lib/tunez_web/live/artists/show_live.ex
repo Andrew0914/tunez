@@ -85,7 +85,7 @@ defmodule TunezWeb.Artists.ShowLive do
     <div id={"album-#{@album.id}"} class="md:flex gap-8 group">
       <div class="mx-auto mb-6 md:mb-0 w-2/3 md:w-72 lg:w-96">
         <.cover_image image={@album.cover_image_url} />
-        <.rating_bar resource_id={@album.id} rating={1} rating_count={1} />
+        <.rating_bar resource_id={@album.id} rating={0} rating_count={0} resource_name="album" />
       </div>
       <div class="flex-1">
         <.header class="pl-3 pr-2 !m-0">
@@ -234,6 +234,21 @@ defmodule TunezWeb.Artists.ShowLive do
 
         {:error, _} ->
           put_flash(socket, :error, "Could not unfollow artist")
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("rate_album", %{"rating" => rating, "resource-id" => album_id}, socket) do
+    socket =
+      case Tunez.Music.rate_album(%{rating: rating, resource_id: album_id},
+             actor: socket.assigns.current_user
+           ) do
+        {:ok, _} ->
+          put_flash(socket, :info, "Album rated successfully")
+
+        {:error, _} ->
+          put_flash(socket, :error, "Could not rate album")
       end
 
     {:noreply, socket}

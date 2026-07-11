@@ -72,6 +72,7 @@ defmodule Tunez.Music.Album do
       primary? true
 
       change cascade_destroy(:notifications, return_notifications?: true, after_action?: false)
+      change cascade_destroy(:ratings, after_action?: false)
     end
   end
 
