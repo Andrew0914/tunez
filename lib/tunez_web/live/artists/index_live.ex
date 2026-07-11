@@ -1,5 +1,6 @@
 defmodule TunezWeb.Artists.IndexLive do
   use TunezWeb, :live_view
+  import TunezWeb.Components.RatingBar, only: [rating_bar: 1]
 
   require Logger
 
@@ -60,7 +61,7 @@ defmodule TunezWeb.Artists.IndexLive do
 
       <ul class="gap-6 lg:gap-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         <li :for={artist <- @page.results}>
-          <.artist_card artist={artist} />
+          <.artist_card artist={artist} user={@current_user} />
         </li>
       </ul>
 
@@ -89,6 +90,14 @@ defmodule TunezWeb.Artists.IndexLive do
     </p>
 
     <.artist_card_album_info artist={@artist} />
+
+    <.rating_bar
+      :if={Tunez.Music.can_rate_artist?(@user)}
+      resource_id={@artist.id}
+      rating={@artist.my_rating || 0}
+      average={@artist.average_rating}
+      resource_name="artist"
+    />
     """
   end
 
@@ -225,6 +234,37 @@ defmodule TunezWeb.Artists.IndexLive do
   def handle_event("search", %{"query" => query}, socket) do
     params = remove_empty(%{q: query, sort_by: socket.assigns.sort_by})
     {:noreply, push_patch(socket, to: ~p"/?#{params}")}
+  end
+
+  def handle_event("rate_artist", %{"rating" => rating, "resource-id" => artist_id}, socket) do
+    reload_artist_rating = fn
+      %{id: ^artist_id} = artist ->
+        Ash.load!(artist, [:my_rating, :average_rating], actor: socket.assigns.current_user)
+
+      artist ->
+        artist
+    end
+
+    result =
+      Tunez.Music.rate_artist(%{rating: rating, resource_id: artist_id},
+        actor: socket.assigns.current_user
+      )
+
+    socket =
+      case result do
+        {:ok, _result} ->
+          socket
+          |> update(:page, fn page ->
+            %{page | results: Enum.map(page.results, reload_artist_rating)}
+          end)
+          |> put_flash(:info, "Artist rated successfully")
+
+        {:error, error} ->
+          IO.inspect(error)
+          put_flash(socket, :error, "Could not rate this artist")
+      end
+
+    {:noreply, socket}
   end
 
   def handle_info(%{topic: "followers:update", payload: %{artist_id: artist_id}}, socket) do

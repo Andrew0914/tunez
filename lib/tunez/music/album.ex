@@ -3,7 +3,12 @@ defmodule Tunez.Music.Album do
     otp_app: :tunez,
     domain: Tunez.Music,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshGraphql.Resource, AshJsonApi.Resource, AshOban],
+    extensions: [
+      AshGraphql.Resource,
+      AshJsonApi.Resource,
+      AshOban,
+      Tunez.Music.Extensions.Rateable
+    ],
     authorizers: [Ash.Policy.Authorizer]
 
   graphql do
@@ -36,6 +41,10 @@ defmodule Tunez.Music.Album do
     end
   end
 
+  ratings do
+    table "album_ratings"
+  end
+
   actions do
     defaults [:read]
 
@@ -63,6 +72,7 @@ defmodule Tunez.Music.Album do
       primary? true
 
       change cascade_destroy(:notifications, return_notifications?: true, after_action?: false)
+      change cascade_destroy(:ratings, after_action?: false)
     end
   end
 

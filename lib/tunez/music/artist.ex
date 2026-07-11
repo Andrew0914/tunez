@@ -3,7 +3,7 @@ defmodule Tunez.Music.Artist do
     otp_app: :tunez,
     domain: Tunez.Music,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshGraphql.Resource, AshJsonApi.Resource],
+    extensions: [AshGraphql.Resource, AshJsonApi.Resource, Tunez.Music.Extensions.Rateable],
     authorizers: [Ash.Policy.Authorizer]
 
   graphql do
@@ -31,6 +31,10 @@ defmodule Tunez.Music.Artist do
     custom_indexes do
       index "name gin_trgm_ops", name: "artists_name_gin_index", using: "GIN"
     end
+  end
+
+  ratings do
+    table "artist_ratings"
   end
 
   resource do
